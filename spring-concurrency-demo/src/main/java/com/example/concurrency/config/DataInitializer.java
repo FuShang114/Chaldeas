@@ -4,6 +4,7 @@ import com.example.concurrency.entity.SeckillProduct;
 import com.example.concurrency.repository.SeckillProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -11,8 +12,10 @@ import java.time.LocalDateTime;
 /**
  * 数据初始化器
  * 应用启动时自动添加测试数据
+ * @Lazy 注解用于压测环境优化，按需初始化数据
  */
 @Component
+@Lazy
 public class DataInitializer implements CommandLineRunner {
 
     @Autowired

@@ -1,324 +1,313 @@
-# 优化缩写版 Spring Boot API 测试技能（含HTML报告模板）
----
-name: "spring-boot-api-test"
-description: "Spring Boot 带库交互RESTful API专属测试技能，支持**自主获取/构造测试数据**、自动化排障、流程化测试，生成含方法链、可展开详情的标准化HTML测试报告，适配数据依赖接口与简单CRUD接口。"
----a
+# Spring Boot API 压测增强版技能（精简优化版）
+name: "spring-boot-api-pressure-test-enhanced"
+description: "Spring Boot API全闭环压测：工具环境一键校验配置→生成可执行JMeter脚本+测试数据→压测+Arthas全指标监控→瓶颈分析→精简版HTML报告，输出所有脚本/命令/模板均可直接使用，流程精简防关键信息遗忘，数据/脚本严格适配接口无报错。"
 
-# Spring Boot API 测试核心技能
-## 一、核心定位&适用场景
-### 适配环境
-Java Spring Boot 项目（支持@Lazy）、带数据库交互的RESTful API、**有数据依赖的复杂接口**/简单CRUD接口测试
+## 核心定位&适用场景
+**适配环境**：Java Spring Boot项目（支持@Lazy懒加载，降低指标失真）、RESTful API（秒杀/库存/高并发查询/数据创建类为主）、单机/集群压测环境
+**解决核心问题**：工具环境配置繁琐、测试数据不可用导致压测100%失败、QPS主观设定不合理、无底层JVM/SQL瓶颈分析、压测报告冗余、长流程遗忘关键信息
+**技能目标**：**精简核心流程+后置信息采集+规避历史错误**，从工具配置到HTML报告全环节落地，仅聚焦**接口本身性能问题**，输出内容可直接执行无二次调整。
 
-### 核心能力
-? 自主获取/构造测试数据（优先接口拉取真实数据，无法获取则现造）
-? 测试数据双维度验证（流程跑通+边界场景）
-? 大模型自验数据有效性（失败先排自身数据问题）
-? 轻量启动优化+按序测试+自动化排障
-? 生成**可直接浏览器打开**的HTML测试报告（含方法链、可展开测试详情）
+## 核心执行规则（融合历史问题，必须严格遵循）
+1. **环境前置校验**：未通过`jmeter -v`/`arthas`全局命令校验前，禁止后续所有步骤，确保工具可正常调用；
+2. **数据绝对可用**：生成的测试数据（真实获取/模拟生成）必须严格匹配接口入参约束、数据依赖，杜绝因数据问题导致的100%错误率；
+3. **分析聚焦接口**：压测分析/瓶颈定位**仅体现接口本身性能问题**，排除JMeter脚本编写、工具使用等外部问题，不将外部错误纳入分析；
+4. **信息后置采集**：关键环境/需求信息延后至「脚本生成前」统一采集，通过**选项列表/固定问题**唤起提问，避免长流程遗忘；
+5. **结果可落地**：所有脚本、命令、配置、优化建议均为**可直接复制执行**，瓶颈分析必须有Arthas监控数据支撑，无主观臆断；
+6. **报告精简聚焦**：HTML报告仅保留**核心压测数据+分优先级优化建议**，剔除冗余模块，直观展示接口性能核心信息。
 
-### 测试目标
-实现「轻量启动→自主造数→按序测试→排障优化→HTML报告」全流程自动化，输出可追溯、可复用的测试结果。
+## 一、核心流程（精简版，防信息遗忘）
+### 整体流程（共5步，后置信息采集，步骤无冗余）
+`1. 工具环境命令式校验+一键配置` → `2. 生成可执行JMeter基础脚本` → `3. 统一采集关键信息（选项列表提问）` → `4. 压测+Arthas同步监控` → `5. 生成精简版HTML压测报告`
+### 流程优化说明
+- 把**压测机性能、目标QPS、接口核心信息**等关键采集工作，从流程开头移至「JMeter基础脚本生成后」，此时聚焦信息采集，避免长流程遗忘；
+- 所有信息采集均通过**客户端选项列表/固定问题**唤起提问，不直接输出大段文本，适配agent提问功能；
+- 剔除冗余分析步骤，仅保留「接口核心数据依赖」分析，确保测试数据可用，其余非核心环节融入对应步骤。
 
-## 二、核心执行规则（必按顺序）
-### 核心重点：测试数据自主获取&构造（优先级+双维度）
-1. **数据获取优先级**：
-   - 有数据依赖接口（如按用户ID查关系表）：**优先调用测试环境查询接口**拉取真实可用数据，基于真实数据构造测试用例；
-   - 无法拉取真实数据：主动构造合法数据跑通完整流程；
-   - 简单CRUD接口：直接构造测试数据，无需调用查询接口。
-2. **测试数据双维度考察**：
-   - 基础维度：确保数据能跑通接口完整调用流程（入参合法、依赖数据有效）；
-   - 边界维度：覆盖参数极值/空值、分页边界、重复数据、非空校验等边界场景。
-3. **数据自验责任**：测试失败时，大模型**必须先校验自身构造/获取的测试数据**（无格式错、范围越界、依赖缺失），确认自身数据无问题后，再判定接口/项目本身问题。
+## 二、核心能力1：JMeter/Arthas工具环境命令式校验+一键配置（前置必做）
+### 校验规则
+**仅通过终端命令校验**，未安装则输出**分系统（Linux/Windows/Mac）一键配置命令**，确保工具可**全局命令行调用**，无手动复杂配置。
+### 1. Arthas校验+一键配置
+#### 命令校验（任意目录执行，输出版本/列出Java进程即成功）
+```bash
+# 核心校验
+arthas -v
+# 备用校验
+java -jar /usr/local/arthas/arthas-boot.jar -v
+```
+#### 分系统一键配置（复制即执行，全局可用）
+##### Linux/Mac
+```bash
+mkdir -p /usr/local/arthas && curl -O https://arthas.aliyun.com/arthas-boot.jar && mv arthas-boot.jar /usr/local/arthas/
+echo 'alias arthas="java -jar /usr/local/arthas/arthas-boot.jar"' >> ~/.bashrc && source ~/.bashrc
+```
+##### Windows
+1. 下载：https://arthas.aliyun.com/arthas-boot.jar → 保存至`C:\arthas\`
+2. 新增`arthas.bat`在同目录：`@java -jar C:\arthas\arthas-boot.jar %*`
+3. 配置环境变量：Path添加`%ARTHAS_HOME%`（ARTHAS_HOME=C:\arthas）
+4. 校验：CMD任意目录执行`arthas`，列出Java进程即成功
 
-### Step 1：项目轻量启动配置
-- 启动类添加`@Lazy`注解实现Bean懒加载，减少非测试组件加载，避免启动耗时/冲突；非核心配置/服务类可追加`@Lazy`；
-- 核心代码示例：
-  ```java
-  @Lazy
-  @SpringBootApplication
-  public class XxxApplication {
-      public static void main(String[] args) {
-          SpringApplication.run(XxxApplication.class, args);
-      }
-  }
-  ```
-- 目标：快速、无干扰启动测试环境，为后续测试铺路。
+### 2. JMeter校验+一键配置（含JDK前置校验）
+#### 前置条件
+JDK8/11/17已安装（`java -version`可输出版本，推荐JDK8）
+#### 命令校验（任意目录执行，直接输出版本即成功）
+```bash
+jmeter -v
+```
+#### 分系统一键配置（复制即执行，全局可用）
+##### Linux/Mac
+```bash
+wget https://archive.apache.org/dist/jmeter/binaries/apache-jmeter-5.6.3.zip -P /opt && unzip /opt/apache-jmeter-5.6.3.zip -d /opt
+echo 'export JMETER_HOME=/opt/apache-jmeter-5.6.3 && export PATH=$PATH:$JMETER_HOME/bin' >> /etc/profile && source /etc/profile
+```
+##### Windows
+1. 下载：https://archive.apache.org/dist/jmeter/binaries/apache-jmeter-5.6.3.zip → 解压至`D:\apache-jmeter-5.6.3`（无空格/中文）
+2. 配置环境变量：新增`JMETER_HOME=D:\apache-jmeter-5.6.3`，Path添加`%JMETER_HOME%\bin`
+3. 校验：CMD执行`jmeter -v`输出版本即成功
+#### JMeter核心压测命令（无GUI，直接使用）
+```bash
+# 执行脚本+生成结果+直接输出HTML报告（一步到位）
+jmeter -n -t 压测脚本.jmx -l 测试结果.jtl -e -o 压测报告/
+```
 
-### Step 2：基于自主造数设计测试用例
-基于「自主获取/构造的测试数据」，按**单例单场景**设计用例，覆盖4类核心场景，且每个用例生成**标准化入参JSON**：
-1. 正常场景：参数合规、依赖数据有效，接口正常返回业务数据；
-2. 边界场景：参数极值/空值、分页边界（page=0/size=0）、单/多关联数据；
-3. 异常场景：非法参数、缺失必传项、权限不足、请求方法错误；
-4. 依赖场景：基于真实/构造的关联数据，验证数据链路有效性。
+## 三、核心能力2：生成可执行JMeter基础脚本（通用版，无需提前填信息）
+### 脚本核心特性（规避历史错误，确保可用）
+- 集成**通用CSV参数化配置**，仅预留变量占位，后续采集信息后直接替换即可；
+- 添加**精准响应断言**（仅校验接口本身字段，如200状态码、业务success字段），不因断言规则错误导致误判；
+- 极简配置，仅保留核心模块（线程组/HTTP请求/断言/结果收集），无冗余组件，方便后续调整；
+-纠错提醒：你曾经经常写错jemeter脚本导致无法启动。请严格生成好脚本
+请基于以下极简JMeter模板，替换模板中的占位符为实际业务值，生成完整可运行的JMX脚本：
+【极简模板】
+<HTTPSamplerProxy>
+  <stringProp name="HTTPSampler.protocol">${protocol}</stringProp>
+  <stringProp name="HTTPSampler.domain">${ip}</stringProp>
+  <stringProp name="HTTPSampler.method">${method}</stringProp>
+  <stringProp name="HTTPSampler.path">${api_path}</stringProp>
+  <stringProp name="HTTPSampler.body_data">${request_body}</stringProp>
+</HTTPSamplerProxy>
+【变量清单】
+1. protocol：http/https  2. ip：接口IP  3. method：请求方式  4. api_path：接口路径  5. request_body：JSON请求体（含CSV变量）
 
-### Step 3：按序执行接口测试（不可违反）
-1. 严格按用例编号升序执行，禁止跨号、逆序，禁止跳步执行；
-2. 每用例执行后立即记录**完整请求日志**（地址、方法、入参JSON、请求时间、返回值、状态码、方法链）；
-3. 执行成功→继续下一个；执行失败→立即进入**排障流程**（Step4），排障后重执行；
-4. 全程留存日志，为排障和HTML报告生成提供依据。
 
-### Step 4：自动化排障&数据修正
-#### 核心逻辑：先验自身数据→定问题归属→靶向处理→重执行
-1. **大模型自验数据**：失败后首先校验自身测试数据，确认无格式、范围、依赖缺失等问题（必做步骤）；
-2. **问题归属判定**
-   - **自身数据问题（必修正）**：入参格式错、依赖数据无效、参数越界、与库中数据冲突；
-   - **接口/项目问题（仅记录）**：空指针、库查询错误、业务逻辑错、权限配置错（非数据导致的结果不匹配）；
-3. **靶向处理**
-   - 自身数据问题：重新拉取/构造有效数据（如替换无效用户ID为真实ID），修正入参JSON；
-   - 接口问题：精准记录**报错信息、报错位置**，分析并标注**潜在告警**（数据丢失、漏存、链路异常等）；
-4. **重执行**：修正后重执行该用例，成功则继续；连续3次失败则跳过并记录，进入下一个用例。
+## 四、核心能力3：关键信息统一采集（后置采集，选项列表提问，防遗忘）
+### 采集时机
+生成JMeter基础脚本后，**通过客户端选项列表/固定问题逐一提问**，统一采集所有关键信息，采集完成后自动替换脚本占位符、生成测试数据、定制压测计划。
+### 采集内容（分4类，均为选项/简短回答，无大段文本）
+#### 【第一类】接口核心信息（必选/简短输入，唤起提问：请选择/输入以下接口信息）
+1. 接口请求协议：「1.HTTP 2.HTTPS」
+2. 接口IP/域名：（输入框，例：192.168.1.100）
+3. 接口端口：（输入框，例：8080）
+4. 接口请求方式：「1.GET 2.POST 3.PUT 4.DELETE」
+5. 接口路径：（输入框，例：/api/v1/seckill）
+6. 接口请求头：（输入框，例：Content-Type:application/json;Token:xxx）
+7. 接口请求体/入参：（输入框，例：{"userId":"${userId}","productId":"${productId}"}）
+8. 接口核心校验字段：（输入框，例：success:true/200）
 
-### Step 5：测试结果归集
-全量用例执行完成后，按执行顺序归集以下核心信息，为HTML报告做准备：
-1. 接口基础信息：地址、请求方法、功能描述、测试环境（JDK/数据库/启动方式）、测试时间、通过率；
-2. 接口调用**方法链**：核心调用的Controller→Service→DAO→依赖接口/第三方服务；
-3. 测试用例全量信息：编号、场景类型、入参JSON、执行状态（无问题/报错/告警）、报错信息/位置、告警信息、接口输出JSON、数据构造/获取方式、修正记录（如有）；
-4. 统计信息：总用例数、成功/失败/跳过数、通过率（通过率=成功用例数/总用例数×100%）。
+#### 【第二类】压测机硬件信息（必选，唤起提问：请选择压测机性能配置）
+1. 压测机CPU核心数：「1.4核 2.8核 3.16核 4.其他（输入）」
+2. 压测机内存：「1.8GB 2.16GB 3.32GB 4.其他（输入）」
+3. 压测机操作系统：「1.Linux 2.Windows 3.Mac」
 
-### Step 6：生成标准化HTML测试报告
-基于归集结果，**直接复用下方HTML模板**，替换所有`{xxx}`占位符生成报告，报告可直接在浏览器打开，无需额外修改。
-#### HTML报告核心要求
-- 固定页面结构：接口概览→调用方法链→测试数据列表；
-- 测试数据为**可展开卡片**，展开后显示入参JSON、执行状态、报错/告警、接口输出；
-- JSON格式自动格式化，报错标红、告警标黄、无问题标绿，视觉层级清晰。
+#### 【第三类】压测需求信息（必选，唤起提问：请选择/输入以下压测需求）
+1. 目标基准QPS：（输入框，例：200；若无则自动预测）
+2. 压测梯度数：「1.2梯度（基础+目标） 2.3梯度（基础+目标+极限）」
+3. 单梯度压测总时长：「1.5分钟 2.7分钟 3.10分钟」
 
-## 三、HTML测试报告模板（AI直接复用，替换{xxx}占位符）
+#### 【第四类】测试数据来源（必选，唤起提问：请选择测试数据生成方式）
+1. 数据来源：「1.从测试环境获取真实数据 2.自动生成模拟数据」
+2. 需生成/获取的测试数据量：（输入框，例：2000条）
+3. 接口入参约束：（输入框，例：userId:1000-9999;productId:5000-5999）
+
+### 采集后自动处理
+1. 自动替换JMeter基础脚本中的所有占位符，生成**接口专属可执行脚本**；
+2. 基于压测机性能+接口类型（自动判断），**科学预测QPS**（无目标QPS时），生成标准化压测计划；
+3. 基于接口入参约束，生成**100%可用的CSV测试数据文件**（真实获取/模拟生成），杜绝数据错误导致的压测失败；
+4. 生成**压测+监控同步执行命令**，一键启动，无需手动配置。
+
+## 五、核心能力4：压测+Arthas全指标监控（同步执行，仅分析接口问题）
+### 执行规则
+1. 采集信息后，自动生成**一键执行命令**，压测与监控**同步启动**，无时间差，确保数据真实；
+2. Arthas监控仅采集**与接口性能相关的核心指标**，日志按梯度保存，方便后续分析；
+3. 瓶颈分析**仅聚焦接口本身**，排除JMeter脚本、工具使用等外部问题，不将外部错误纳入分析报告。
+### 1. 一键同步执行命令（生成后直接复制执行，自动保存日志）
+```bash
+# 后台启动Arthas监控，仅采集接口相关指标，保存日志（按时间戳命名，防覆盖）
+nohup bash -c "arthas dashboard -n 1000 > dashboard_$(date +%Y%m%d).log && thread -n 10 -i 2000 > thread_$(date +%Y%m%d).log && trace ${full_class}.${method} -j > trace_$(date +%Y%m%d).log && gc -i 1000 > gc_$(date +%Y%m%d).log && sql > sql_$(date +%Y%m%d).log" &
+# 启动JMeter接口专属压测脚本，直接生成HTML报告
+jmeter -n -t api_test.jmx -l api_result_$(date +%Y%m%d).jtl -e -o api_report_$(date +%Y%m%d)/
+# 压测完成后自动停止Arthas，避免占用资源
+ps -ef | grep arthas | grep -v grep | awk '{print $2}' | xargs kill -9
+```
+**说明**：`${full_class}.${method}`为采集信息后自动替换的**接口对应业务全类名+方法名**（例：com.seckill.service.SeckillService.doSeckill）。
+
+### 2. Arthas核心监控指标（仅聚焦接口相关，无冗余）
+| 监控维度 | Arthas命令 | 核心分析指标（仅关联接口性能） |
+|----------|------------|--------------------------------|
+| JVM监控  | `dashboard` | 接口执行时CPU/内存使用率、活跃线程数、接口平均RT |
+| 线程分析 | `thread -n 10` | 接口业务方法相关的阻塞/忙线程、死锁线程 |
+| 方法追踪 | `trace 全类名 方法名` | 接口核心方法总耗时、子方法耗时、慢方法定位 |
+| GC监控   | `gc -i 1000` | 接口压测时YGC/FGC频率、耗时，是否导致接口停顿 |
+| SQL监控  | `sql` | 接口关联的慢SQL（执行时间＞50ms）、执行次数 |
+
+### 3. 瓶颈分析规则（融合历史问题，仅分析接口本身）
+1. **有数据支撑**：每个瓶颈必须附Arthas监控日志片段/具体数据，无主观判断；
+2. **聚焦接口问题**：仅分析**接口代码/业务逻辑/数据库/缓存/分布式锁**等接口本身的性能问题，排除工具、脚本等外部问题；
+3. **分优先级排序**：按「高（立即解决）→中（上线前解决）→低（后续迭代）」排序，方便落地。
+### 瓶颈分析输出示例（结构化，简洁明了）
+```markdown
+# 接口性能瓶颈分析清单（仅聚焦接口本身）
+## 高优先级（立即解决）
+1. 【接口核心方法慢】trace日志显示doSeckill方法平均耗时200ms，其中库存扣减SQL占150ms，为核心耗时点；
+2. 【分布式锁竞争】thread日志显示30+线程阻塞在接口的RedissonLock.tryLock()方法，导致接口RT飙升。
+
+## 中优先级（上线前解决）
+1. 【YGC频繁】gc日志显示压测时YGC每3秒1次，导致接口RT波动达80ms，影响稳定性。
+
+## 低优先级（后续迭代）
+1. 【本地缓存未使用】接口频繁查询商品基础信息，未做本地缓存，增加DB访问压力。
+```
+
+## 六、核心能力5：精简版HTML压测报告（压缩文本，仅保留数据+优化建议）
+### 报告核心特性
+1. **极致压缩**：剔除所有冗余模块（如报告概览、附录、多余说明），仅保留**核心压测数据+分优先级优化建议**，文本量大幅减少；
+2. **数据直观**：以**表格+极简图表**展示压测核心指标，无冗余可视化；
+3. **建议落地**：优化建议均为**可直接复制执行的代码/配置**，按优先级排序，聚焦接口问题解决；
+4. **无外部信息**：报告中不体现任何JMeter脚本、工具使用等外部问题，仅分析接口本身。
+
+### 精简版HTML压测报告（可直接运行，压缩后版本）
 ```html
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{接口地址} - Spring Boot API测试报告</title>
+    <title>Spring Boot API压测核心报告</title>
+    <script src="https://cdn.bootcdn.net/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
     <style>
-        * {margin: 0; padding: 0; box-sizing: border-box; font-family: "Microsoft YaHei", Consolas, monospace;}
-        body {padding: 2rem; background: #f5f7fa; color: #333; line-height: 1.6;}
-        .container {max-width: 1400px; margin: 0 auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); padding: 2rem;}
-        /* 通用标题样式 */
-        .page-title {text-align: center; font-size: 1.8rem; color: #2c3e50; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 2px solid #eef2f7;}
-        .mod-title {font-size: 1.2rem; color: #2c3e50; margin: 1.5rem 0 1rem; display: flex; align-items: center; gap: 0.5rem;}
-        .mod-title::before {content: ""; width: 4px; height: 18px; background: #3498db; border-radius: 2px;}
-        /* 接口概览样式 */
-        .api-info {display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; padding: 1rem; background: #f8f9fa; border-radius: 6px;}
-        .info-item {display: flex; flex-direction: column;}
-        .info-label {font-size: 0.9rem; color: #666; font-weight: 500; margin-bottom: 0.3rem;}
-        .info-value {font-size: 1rem; color: #2c3e50; font-weight: 600;}
-        /* 方法链样式 */
-        .method-chain {padding: 1rem; background: #f8f9fa; border-radius: 6px; font-size: 1rem;}
-        .chain-item {color: #3498db; font-weight: 600;}
-        /* 测试数据列表样式 */
-        .case-list {margin-top: 1rem;}
-        .case-card {border: 1px solid #eef2f7; border-radius: 6px; margin-bottom: 1rem; overflow: hidden;}
-        .case-header {padding: 1rem 1.5rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: #f8f9fa;}
-        .case-base {display: flex; align-items: center; gap: 1rem;}
-        .case-num {width: 36px; height: 36px; border-radius: 50%; background: #3498db; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 600;}
-        .case-scene {font-size: 1rem; font-weight: 500; color: #2c3e50;}
-        .case-status {padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600;}
-        .status-ok {background: #e8f5e9; color: #2e7d32;}
-        .status-error {background: #ffebee; color: #c62828;}
-        .status-warn {background: #fff3e0; color: #f57c00;}
-        /* 用例内容样式 */
-        .case-body {padding: 0 1.5rem; max-height: 0; overflow: hidden; transition: max-height 0.3s ease;}
-        .case-body.open {max-height: 3000px; padding: 1rem 1.5rem 1.5rem; border-top: 1px solid #eef2f7;}
-        .case-mod {margin-bottom: 1rem;}
-        .case-mod:last-child {margin-bottom: 0;}
-        .case-subtitle {font-size: 0.95rem; color: #424242; font-weight: 600; margin-bottom: 0.5rem;}
-        .json-box {padding: 1rem; background: #fafafa; border-radius: 4px; border: 1px solid #e0e0e0; font-size: 0.9rem; white-space: pre-wrap; word-wrap: break-word;}
-        .error-box {padding: 1rem; background: #ffebee; border-left: 4px solid #c62828; border-radius: 0 4px 4px 0; font-size: 0.9rem;}
-        .warn-box {padding: 1rem; background: #fff3e0; border-left: 4px solid #f57c00; border-radius: 0 4px 4px 0; font-size: 0.9rem;}
-        .ok-box {padding: 1rem; background: #e8f5e9; border-left: 4px solid #2e7d32; border-radius: 0 4px 4px 0; font-size: 0.9rem; color: #2e7d32;}
-        .arrow {transition: transform 0.3s ease; font-size: 1.2rem; color: #666;}
-        .arrow.open {transform: rotate(180deg);}
-        /* 统计样式 */
-        .stat-info {position: fixed; top: 2rem; right: 2rem; background: #fff; padding: 1rem; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); min-width: 200px;}
-        .stat-title {font-size: 1rem; font-weight: 600; color: #2c3e50; margin-bottom: 0.8rem; padding-bottom: 0.5rem; border-bottom: 1px solid #eef2f7;}
-        .stat-item {display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.95rem;}
-        .stat-key {color: #666;}
-        .stat-value {font-weight: 600; color: #2c3e50;}
-        .pass-rate {color: #2e7d32; font-size: 1.1rem;}
+        * {margin: 0; padding: 0; box-sizing: border-box; font-family: "Microsoft YaHei", sans-serif;}
+        body {background: #f5f7fa; padding: 20px;}
+        .container {max-width: 1000px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);}
+        .title {text-align: center; font-size: 20px; font-weight: 700; color: #2563eb; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #2563eb;}
+        .mod-title {font-size: 16px; font-weight: 600; color: #2563eb; margin: 15px 0 10px 0; display: flex; align-items: center; gap: 6px;}
+        .mod-title::before {content: ""; width: 4px; height: 16px; background: #2563eb; border-radius: 2px;}
+        table {width: 100%; border-collapse: collapse; margin: 10px 0;}
+        table th, td {padding: 10px; text-align: center; border: 1px solid #e2e8f0; font-size: 14px;}
+        table th {background: #f8fafc; color: #1f2937;}
+        .chart {width: 100%; height: 300px; margin: 10px 0; border: 1px solid #e2e8f0; border-radius: 4px;}
+        .opt-card {background: #ecfdf5; border-left: 4px solid #10b981; padding: 12px; margin: 8px 0; border-radius: 4px;}
+        .opt-card.high {border-left-color: #dc2626; background: #fef2f2;}
+        .opt-card.mid {border-left-color: #f59e0b; background: #fffbeb;}
+        .opt-title {font-weight: 600; margin-bottom: 5px;}
+        .opt-code {background: #1f2937; color: #f9fafb; padding: 10px; border-radius: 4px; margin: 8px 0; font-size: 13px; overflow-x: auto; font-family: Consolas, monospace;}
     </style>
 </head>
 <body>
-    <!-- 悬浮统计面板 -->
-    <div class="stat-info">
-        <div class="stat-title">测试统计</div>
-        <div class="stat-item">
-            <span class="stat-key">总用例数：</span>
-            <span class="stat-value">{总用例数}</span>
-        </div>
-        <div class="stat-item">
-            <span class="stat-key">成功用例数：</span>
-            <span class="stat-value">{成功用例数}</span>
-        </div>
-        <div class="stat-item">
-            <span class="stat-key">失败用例数：</span>
-            <span class="stat-value">{失败用例数}</span>
-        </div>
-        <div class="stat-item">
-            <span class="stat-key">跳过用例数：</span>
-            <span class="stat-value">{跳过用例数}</span>
-        </div>
-        <div class="stat-item" style="margin-top: 0.8rem; padding-top: 0.5rem; border-top: 1px dashed #eef2f7;">
-            <span class="stat-key">测试通过率：</span>
-            <span class="stat-value pass-rate">{通过率}%</span>
-        </div>
-    </div>
-
     <div class="container">
-        <h1 class="page-title">Spring Boot API 自动化测试报告</h1>
+        <!-- 报告标题 -->
+        <h1 class="title">Spring Boot API压测核心报告 - 接口：${api_path}</h1>
 
-        <!-- 模块1：接口基础信息 -->
-        <div>
-            <h2 class="mod-title">接口基础信息</h2>
-            <div class="api-info">
-                <div class="info-item">
-                    <span class="info-label">接口地址</span>
-                    <span class="info-value">{接口地址}</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">请求方法</span>
-                    <span class="info-value">{GET/POST/PUT/DELETE}</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">接口功能</span>
-                    <span class="info-value">{接口功能描述}</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">测试环境</span>
-                    <span class="info-value">JDK{版本}/{数据库类型} {版本}</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">测试时间</span>
-                    <span class="info-value">{测试时间}</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">启动方式</span>
-                    <span class="info-value">Spring Boot @Lazy 轻量启动</span>
-                </div>
+        <!-- 1. 核心压测数据（核心模块，无冗余） -->
+        <div class="module">
+            <h2 class="mod-title">一、核心压测指标数据</h2>
+            <table>
+                <tr>
+                    <th>压测梯度</th>
+                    <th>并发数</th>
+                    <th>实际QPS</th>
+                    <th>平均RT(ms)</th>
+                    <th>P95(ms)</th>
+                    <th>P99(ms)</th>
+                    <th>成功率(%)</th>
+                    <th>接口CPU使用率(%)</th>
+                </tr>
+                <tr><td>基础验证</td><td>${c1}</td><td>${q1}</td><td>${rt1}</td><td>${p95_1}</td><td>${p99_1}</td><td>${s1}</td><td>${cpu1}</td></tr>
+                <tr><td>目标验证</td><td>${c2}</td><td>${q2}</td><td>${rt2}</td><td>${p95_2}</td><td>${p99_2}</td><td>${s2}</td><td>${cpu2}</td></tr>
+                <tr><td>极限验证</td><td>${c3}</td><td>${q3}</td><td>${rt3}</td><td>${p95_3}</td><td>${p99_3}</td><td>${s3}</td><td>${cpu3}</td></tr>
+            </table>
+            <!-- 极简图表：QPS+P99趋势（核心指标可视化） -->
+            <div class="chart" id="mainChart"></div>
+        </div>
+
+        <!-- 2. 分优先级优化建议（核心模块，可直接执行） -->
+        <div class="module">
+            <h2 class="mod-title">二、接口性能优化建议（可直接执行）</h2>
+            <!-- 高优先级：立即解决 -->
+            <div class="opt-card high">
+                <div class="opt-title">【高优先级】立即解决 - 核心瓶颈（影响接口QPS/成功率）</div>
+                <p>${opt_high_desc}</p>
+                <div class="opt-code">${opt_high_code}</div>
+            </div>
+            <!-- 中优先级：上线前解决 -->
+            <div class="opt-card mid">
+                <div class="opt-title">【中优先级】上线前解决 - 稳定性优化（影响接口RT波动）</div>
+                <p>${opt_mid_desc}</p>
+                <div class="opt-code">${opt_mid_code}</div>
+            </div>
+            <!-- 低优先级：后续迭代 -->
+            <div class="opt-card">
+                <div class="opt-title">【低优先级】后续迭代 - 性能提升（进一步提升QPS）</div>
+                <p>${opt_low_desc}</p>
+                <div class="opt-code">${opt_low_code}</div>
             </div>
         </div>
 
-        <!-- 模块2：接口调用方法链 -->
-        <div>
-            <h2 class="mod-title">接口核心调用方法链</h2>
-            <div class="method-chain">
-                <span class="chain-item">{Controller类}#{方法名}</span> → 
-                <span class="chain-item">{Service类}#{方法名}</span> → 
-                <span class="chain-item">{DAO/Mapper类}#{方法名}</span> → 
-                <span class="chain-item">{依赖接口/第三方服务}</span>
-                <!-- 按实际调用链删减/追加，保持格式统一 -->
-            </div>
-        </div>
-
-        <!-- 模块3：测试数据列表（可展开） -->
-        <div>
-            <h2 class="mod-title">测试数据用例详情</h2>
-            <div class="case-list">
-                <!-- 测试用例卡片：AI循环生成，替换{xxx}，复制即可新增 -->
-                <div class="case-card">
-                    <div class="case-header" onclick="toggleCase(this)">
-                        <div class="case-base">
-                            <div class="case-num">{用例编号}</div>
-                            <div class="case-scene">{测试场景：正常/边界/异常/依赖}</div>
-                        </div>
-                        <div>
-                            <span class="case-status status-{ok/error/warn}">{执行状态：无问题/报错/告警}</span>
-                            <span class="arrow">▼</span>
-                        </div>
-                    </div>
-                    <div class="case-body">
-                        <!-- 入参JSON -->
-                        <div class="case-mod">
-                            <h3 class="case-subtitle">?? 测试入参JSON</h3>
-                            <div class="json-box">{格式化的入参JSON，保留换行和缩进}</div>
-                        </div>
-                        <!-- 执行状态详情 -->
-                        <div class="case-mod">
-                            <h3 class="case-subtitle">?? 执行状态详情</h3>
-                            <!-- 状态1：无问题 -->
-                            {无问题时展示}
-                            <div class="ok-box">? 接口执行成功，无报错、无潜在告警，返回结果符合预期。</div>
-                            
-                            <!-- 状态2：报错（大模型已自验数据无问题） -->
-                            {报错时展示，替换下方内容}
-                            <div class="error-box">
-                                <strong>? 报错信息：</strong>{具体报错内容}<br>
-                                <strong>?? 报错位置：</strong>{接口方法链/代码行/数据库层}<br>
-                                <strong>?? 备注：</strong>大模型已校验测试数据，数据格式、依赖均合法，判定为接口/项目本身问题。
-                            </div>
-                            
-                            <!-- 状态3：告警 -->
-                            {告警时展示，替换下方内容}
-                            <div class="warn-box">
-                                <strong>?? 告警信息：</strong>{潜在问题，如数据丢失、漏存、返回字段缺失、链路数据不一致等}<br>
-                                <strong>?? 分析：</strong>{大模型对告警的具体分析，如“创建接口未返回主键ID，可能导致后续数据查询失败”}
-                            </div>
-                        </div>
-                        <!-- 接口输出JSON -->
-                        <div class="case-mod">
-                            <h3 class="case-subtitle">?? 接口输出JSON</h3>
-                            <div class="json-box">{格式化的输出JSON/报错信息，保留换行和缩进}</div>
-                        </div>
-                        <!-- 附加记录 -->
-                        <div class="case-mod">
-                            <h3 class="case-subtitle">?? 附加记录</h3>
-                            <div style="font-size: 0.95rem; color: #666;">
-                                数据构造方式：{接口拉取真实数据/人工构造数据} | 修正记录：{无/修正入参XXX，替换为XXX}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <!-- 3. 优化后预期效果（简洁表格） -->
+        <div class="module">
+            <h2 class="mod-title">三、优化后预期效果</h2>
+            <table>
+                <tr>
+                    <th>核心指标</th>
+                    <th>优化前（极限梯度）</th>
+                    <th>优化后（极限梯度）</th>
+                    <th>提升幅度</th>
+                </tr>
+                <tr><td>实际QPS</td><td>${old_qps}</td><td>${new_qps}</td><td>${up_qps}</td></tr>
+                <tr><td>P99 RT(ms)</td><td>${old_p99}</td><td>${new_p99}</td><td>${up_p99}</td></tr>
+                <tr><td>成功率(%)</td><td>${old_suc}</td><td>${new_suc}</td><td>${up_suc}</td></tr>
+            </table>
         </div>
     </div>
 
+    <!-- 极简ECharts图表：仅展示QPS+P99核心趋势 -->
     <script>
-        // 用例卡片折叠/展开逻辑
-        function toggleCase(header) {
-            const body = header.nextElementSibling;
-            const arrow = header.querySelector('.arrow');
-            body.classList.toggle('open');
-            arrow.classList.toggle('open');
-        }
+        var myChart = echarts.init(document.getElementById('mainChart'));
+        var option = {
+            title: {text: '各梯度QPS & P99 RT趋势', fontSize: 14},
+            tooltip: {trigger: 'axis'},
+            legend: {data: ['实际QPS', 'P99 RT(ms)'], top: 20},
+            grid: {left: '3%', right: '4%', bottom: '3%', containLabel: true},
+            xAxis: {type: 'category', data: ['基础验证', '目标验证', '极限验证']},
+            yAxis: [
+                {type: 'value', name: 'QPS', min: 0},
+                {type: 'value', name: 'P99 RT(ms)', min: 0, position: 'right'}
+            ],
+            series: [
+                {name: '实际QPS', type: 'bar', yAxisIndex: 0, data: [${q1}, ${q2}, ${q3}], color: '#10b981'},
+                {name: 'P99 RT(ms)', type: 'line', yAxisIndex: 1, data: [${p99_1}, ${p99_2}, ${p99_3}], color: '#dc2626', lineWidth: 3}
+            ]
+        };
+        myChart.setOption(option);
+        window.addEventListener('resize', () => myChart.resize());
     </script>
 </body>
 </html>
 ```
-#### HTML模板使用说明
-1. AI直接复制模板，**替换所有`{xxx}`占位符**即可，无需修改样式和脚本；
-2. 测试用例卡片可**循环复制生成**，按用例编号顺序排列；
-3. 执行状态仅需替换`status-{ok/error/warn}`，样式会自动匹配（绿/红/黄）；
-4. JSON内容需**格式化**（保留换行、缩进），提升可读性；
-5. 方法链按实际调用关系删减/追加，保持`→`连接的统一格式。
+### 报告使用说明
+1. 采集压测数据后，仅需替换报告中的`${xxx}`占位符（如接口路径、压测指标、优化建议、代码），无需修改其他内容；
+2. 直接保存为`api_pressure_report.html`，浏览器打开即可查看，支持分享/打印；
+3. 图表为极简版，仅展示**QPS+P99**核心趋势，如需新增指标，仅需修改ECharts的`data`部分即可。
 
-## 四、核心约束（严格遵循）
-1. **顺序执行**：步骤1-6、测试用例均按编号升序执行，禁止跳步、跨号、逆序；
-2. **数据优先级**：有依赖接口**优先拉取测试环境真实数据**，无法拉取再构造，简单CRUD直接构造；
-3. **数据自验**：测试失败时，大模型必须先校验自身数据有效性，排除自身问题后再判定接口BUG；
-4. **双维测试**：所有测试数据必须覆盖「流程跑通」和「边界场景」两个维度，缺一不可；
-5. **模板复用**：HTML报告必须直接复用上述模板，替换占位符即可，保证格式标准化；
-6. **轻量启动**：所有测试必须基于加`@Lazy`的轻量启动项目，禁止未配置直接测试；
-7. **状态标注**：报错状态必须明确“大模型已自验数据无问题”，告警状态必须是大模型分析的潜在数据问题。
-
-## 五、快速示例流程
-1. **轻量启动**：UserService启动类添加`@Lazy`，启动测试环境；
-2. **自主造数**：测试`/api/v1/order/query`（按用户ID查订单），先调用`/api/v1/user/queryAll`拉取真实用户ID=1008，构造正常入参`{userId:1008, page:1, size:10}`和边界入参`{userId:1008, page:0, size:0}`；
-3. **按序执行**：先执行正常场景用例→成功，再执行边界场景用例→成功；
-4. **结果归集**：记录接口信息、方法链（`OrderController→OrderService→OrderMapper`）、两个用例的入参/输出；
-5. **生成报告**：复用HTML模板，替换占位符，生成可直接打开的测试报告。
-
-## 六、技能触发场景
-当用户有以下需求时，直接调用本技能：
-- 测试**带数据库交互**的Spring Boot RESTful API；
-- 接口存在**数据依赖**，需要从测试环境自主获取真实数据构造用例；
-- 需大模型**自验测试数据有效性**，避免因数据问题导致测试失败；
-- 要求生成**含方法链+可展开详情**的标准化HTML测试报告；
-- 测试有数据依赖的复杂接口或简单CRUD接口；
-- 因脏数据、数据依赖导致测试频繁失败，需要自动化排障。
+## 七、快速使用总流程（客户端落地版，防遗忘）
+1. **工具校验**：执行命令校验JMeter/Arthas，未安装则一键配置，确保全局可用；
+2. **生成基础脚本**：技能自动输出JMeter通用基础脚本，保存即可；
+3. **信息采集**：技能通过**选项列表/固定问题**逐一提问，采集接口/压测机/需求/数据4类关键信息（后置采集，防遗忘）；
+4. **自动生成落地文件**：技能根据采集的信息，自动生成**接口专属JMeter脚本+100%可用CSV测试数据+一键压测监控命令**；
+5. **执行压测**：复制命令在终端执行，同步启动JMeter压测+Arthas监控，无需手动操作；
+6. **生成报告**：压测完成后，技能整合压测数据+监控结果，输出**精简版HTML核心报告**（仅含数据+优化建议）。
 
 ### 总结
-1. 核心强化**自主获取/构造测试数据**规则，明确优先级和双维度测试要求，绑定大模型数据自验责任；
-2. 新增**可直接复用的HTML测试报告模板**，含悬浮统计、接口概览、方法链、可展开测试用例，JSON格式化、状态色标，直接替换占位符即可生成；
-3. 大幅缩写原有冗余步骤，聚焦「造数→测试→排障→报告」核心流程，保留关键约束和执行顺序；
-4. HTML报告固定结构，测试用例展开后包含**入参JSON、执行状态（报错/告警/无问题）、接口输出、附加记录**，满足测试追溯需求；
-5. 明确报错状态必须标注“大模型已自验数据无问题”，告警状态聚焦数据丢失/漏存等潜在问题，保证测试结果的准确性。
+本次优化核心围绕**「精简流程、后置采集、规避历史错误、压缩报告」** 四大核心，同时融合了历史出现的3类问题（外部错误入分析、测试数据不可用、长流程遗忘信息），关键优化点如下：
+1. 流程精简为6步核心环节，剔除冗余分析，将信息采集后置，通过选项列表提问防关键信息遗忘；
+2. 所有落地文件（脚本/数据/命令）均做严格校验，杜绝测试数据不可用、脚本错误等问题；
+3. 压测分析和报告**仅聚焦接口本身性能问题**，排除工具、脚本等外部问题，符合压测核心需求；
+4. HTML报告极致压缩，仅保留**核心压测数据+可直接执行的优化建议**，剔除所有冗余模块，适配快速落地；
+5. 所有信息采集均通过**选项列表/固定问题**唤起，适配agent提问功能，避免直接输出大段文本。
